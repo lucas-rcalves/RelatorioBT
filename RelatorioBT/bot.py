@@ -3,113 +3,144 @@ import time
 import pandas as pd
 from datetime import datetime
 import os
+import sys
 from botcity.maestro import *
 
 # Disable errors if we are not connected to Maestro
 BotMaestroSDK.RAISE_NOT_CONNECTED = False
 
 def not_found(label):
-    print(f"Element not found: {label}")
-    #bot.stop_browser()
-    exit()
+    print(f"Elemento não encontrado: {label}")
+    raise Exception(f"Elemento não encontrado: {label}")
 
-def login_portal(bot):
-    bot.browse("https://portalanalysisbi.com/login")
-    time.sleep(3)
-    bot.paste("lucas.alves@adtsa.com.br")
-    bot.tab()
-    bot.paste("Adtsa2025@@")
-    bot.enter()
-    time.sleep(5)
+# def enviar_mensagem_erro(bot, erro):
+#     try:
+#         mensagem = f"⚠️ *ERRO NA EXECUÇÃO DO BOT* ⚠️\n\n{erro}"
+#         enviar_whatsapp(bot, mensagem)
+#     except Exception as e:
+#         print(f"Falha ao enviar mensagem de erro: {e}")
 
+def get_excel_path():
+    """Retorna o caminho absoluto para o arquivo Excel"""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(script_dir, "ContatosGEST.xlsx")
 
-    # Searching for element 'EntrarNOV '
-    if not bot.find("EntrarNOV", matching=0.97, waiting_time=10000):
-        not_found("EntrarNOV")
-    bot.click()
+def load_contacts():
+    """Carrega a tabela de contatos com tratamento de erros"""
+    excel_path = get_excel_path()
 
-
-
-def obter_planilha(bot, nome_arquivo):
-
-
-    # Searching for element 'VendasMove '
-    if not bot.find("VendasMove", matching=0.97, waiting_time=30000):
-        not_found("VendasMove")
-    bot.move()
-
-    # Searching for element 'BtExportar '
-    if not bot.find("BtExportar", matching=0.97, waiting_time=10000):
-        not_found("BtExportar")
-    bot.click()
-
-    # Searching for element 'ExportExcel '
-    if not bot.find("ExportExcel", matching=0.97, waiting_time=10000):
-        not_found("ExportExcel")
-    bot.click()
-
-    # Searching for element 'RelativoNome '
-    if not bot.find("RelativoNome", matching=0.97, waiting_time=10000):
-        not_found("RelativoNome")
-    bot.click_relative(239, 13)
-
-    bot.type_keys(["ctrl", "a"])
-    bot.backspace()
-    bot.paste(nome_arquivo)
-
-
-    # Searching for element 'BaixarPlanilha '
-    if not bot.find("BaixarPlanilha", matching=0.97, waiting_time=10000):
-        not_found("BaixarPlanilha")
-    bot.click()
-
-    time.sleep(10)
-
-    # Processamento do arquivo
-    file_path = fr'C:\Users\adtsa\Downloads\{nome_arquivo}.xlsx'
-
-    if not os.path.exists(file_path):
-        print(f"ERRO: Arquivo não encontrado em {file_path}")
-        print("Por favor, verifique:")
-        print(f"1. O arquivo '{nome_arquivo}.xlsx' está na pasta 'Downloads'?")
-        print("2. O nome do arquivo está correto?")
-        print("3. O arquivo não está aberto em outro programa?")
-        exit()
+    if not os.path.exists(excel_path):
+        raise FileNotFoundError(f"Arquivo não encontrado em {excel_path}")
 
     try:
+        return pd.read_excel(excel_path)
+    except Exception as e:
+        raise Exception(f"ERRO ao ler arquivo Excel: {e}")
+
+
+
+def login_portal(bot):
+    try:
+        bot.browse("https://portalanalysisbi.com/login")
+        time.sleep(3)
+        bot.paste("lucas.alves@adtsa.com.br")
+        bot.tab()
+        bot.paste("Adtsa2025@@")
+        bot.enter()
+        time.sleep(5)
+
+        # Searching for element 'Novos '
+        if not bot.find("Novos", matching=0.97, waiting_time=10000):
+            not_found("Novos")
+        bot.click()
+                
+    except Exception as e:
+        raise Exception(f"Falha no login: {str(e)}")
+
+def obter_planilha(bot, nome_arquivo):
+    try:
+
+        # Searching for element 'VendasMove '
+        if not bot.find("VendasMove", matching=0.97, waiting_time=30000):
+            not_found("VendasMove")
+        bot.move()
+
+        # Searching for element 'BtExportar '
+        if not bot.find("BtExportar", matching=0.97, waiting_time=10000):
+            not_found("BtExportar")
+        bot.click()
+
+        # Searching for element 'ExportExcel '
+        if not bot.find("ExportExcel", matching=0.97, waiting_time=10000):
+            not_found("ExportExcel")
+        bot.click()
+
+        # Searching for element 'RelativoNome '
+        if not bot.find("RelativoNome", matching=0.97, waiting_time=10000):
+            not_found("RelativoNome")
+        bot.click_relative(239, 13)
+
+        bot.type_keys(["ctrl", "a"])
+        bot.backspace()
+        bot.paste(nome_arquivo)
+
+
+        # Searching for element 'BaixarPlanilha '
+        if not bot.find("BaixarPlanilha", matching=0.97, waiting_time=10000):
+            not_found("BaixarPlanilha")
+        bot.click()
+
+        time.sleep(10)
+
+        # Processamento do arquivo
+        file_path = fr'C:\Users\adtsa\Downloads\{nome_arquivo}.xlsx'
+
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Arquivo não encontrado em {file_path}")
+
         aba4 = pd.read_excel(file_path, sheet_name='VOLUME FATURADO NO DIA_3')
         aba5 = pd.read_excel(file_path, sheet_name='VOLUME FATURADO NO DIA_4')
         aba6 = pd.read_excel(file_path, sheet_name='VOLUME FATURADO NO DIA_5')
         aba7 = pd.read_excel(file_path, sheet_name='VOLUME FATURADO NO DIA_6')
 
-        vendas_diarias = aba4.set_index('Estoque_Tipo')['Qtde (Soma)'].to_dict()
-        vendas_mensais = aba5.set_index('Estoque_Tipo')['Filtered Qtde (Soma)'].to_dict()
+        def get_value_or_dash(df, row, col):
+            try:
+                if df.empty or len(df.columns) <= col or len(df) <= row:
+                    return "-"
+                value = df.iloc[row, col]
+                return value if not pd.isna(value) else "-"
+            except:
+                return "-"
+
+        total_diario = get_value_or_dash(aba6, 0, 0)
+        total_mensal = get_value_or_dash(aba7, 0, 0)
+
+        tipos = ['Direta', 'Novo', 'Usado']
+        vendas_diarias = {tipo: get_value_or_dash(aba4, i, 1) for i, tipo in enumerate(tipos) if i < len(aba4)}
+        vendas_mensais = {tipo: get_value_or_dash(aba5, i, 1) for i, tipo in enumerate(tipos) if i < len(aba5)}
 
         data_hoje = datetime.now().strftime('%d/%m/%Y')
         data_mensal = datetime.now().strftime('%m/%Y')
 
         informe_base = f"""
+*INFORMATIVO DE VENDAS VEÍCULOS*
+
 Venda diária - {data_hoje}:
-● VDI: {vendas_diarias.get('Direta', 0)}
-● VN: {vendas_diarias.get('Novo', 0)}
-● VU: {vendas_diarias.get('Usado', 0)}
-● Total: {aba6.iloc[0, 0]}
+● VDI: {vendas_diarias.get('Direta', '-')}
+● VN: {vendas_diarias.get('Novo', '-')}
+● VU: {vendas_diarias.get('Usado', '-')}
+● Total: {total_diario}
 
 Vendas Mensal - {data_mensal}:
-● VDI: {vendas_mensais.get('Direta', 0)}
-● VN: {vendas_mensais.get('Novo', 0)}
-● VU: {vendas_mensais.get('Usado', 0)}
-● Total: {aba7.iloc[0, 0]}
-    """
+● VDI: {vendas_mensais.get('Direta', '-')}
+● VN: {vendas_mensais.get('Novo', '-')}
+● VU: {vendas_mensais.get('Usado', '-')}
+● Total: {total_mensal}
+"""
         return informe_base
 
     except Exception as e:
-        print(f"Erro ao processar o arquivo: {e}")
-        print("Possíveis causas:")
-        print("- Nomes das abas estão diferentes do esperado")
-        print("- Estrutura do arquivo foi alterada")
-        print("- Arquivo corrompido")
-        exit()
+        raise Exception(f"Erro ao obter planilha {nome_arquivo}: {str(e)}")
 
 
 def obter_planilha_pendentes(bot, nome_arquivo, tipo_veiculo='carros'):
@@ -146,174 +177,224 @@ def obter_planilha_pendentes(bot, nome_arquivo, tipo_veiculo='carros'):
 
     time.sleep(10)
 
-    # Processamento do arquivo
     file_path = fr'C:\Users\adtsa\Downloads\{nome_arquivo}.xlsx'
 
     if not os.path.exists(file_path):
         print(f"ERRO: Arquivo não encontrado em {file_path}")
-        print("Por favor, verifique:")
-        print(f"1. O arquivo '{nome_arquivo}.xlsx' está na pasta 'Downloads'?")
-        print("2. O nome do arquivo está correto?")
-        print("3. O arquivo não está aberto em outro programa?")
-        exit()
+        return "⚠️ Arquivo não encontrado"
 
     try:
-        aba_volume = pd.read_excel(file_path, sheet_name='VOLUME FATURADO NO DIA')
-        aba_chart = pd.read_excel(file_path, sheet_name='Chart 1')
+        aba_volume = pd.read_excel(file_path, sheet_name='VOLUME FATURADO NO DIA', engine='openpyxl')
+        aba_chart = pd.read_excel(file_path, sheet_name='Chart 1', engine='openpyxl', header=None)
 
-        # Extrai dados básicos
-        total_pendentes = aba_volume.iloc[0, 0] if len(aba_volume.columns) > 0 else 0
-        valor_total = aba_volume.iloc[0, 1] if len(aba_volume.columns) > 1 else 0
-        valor_formatado = f"R$ {valor_total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        print("\nDEBUG - Conteúdo das abas:")
+        print("Aba VOLUME FATURADO NO DIA:")
+        print(aba_volume)
+        print("\nAba Chart 1:")
+        print(aba_chart)
 
-        # Processa as marcas de acordo com o tipo de veículo
+        # Função para extrair valores
+        def get_value(df, row, col, default="-"):
+            try:
+                if df.empty or len(df.columns) <= col or len(df) <= row:
+                    return default
+                value = df.iloc[row, col]
+                return default if pd.isna(value) else value
+            except:
+                return default
+
+        # Extrair totais - CORREÇÃO AQUI: garantindo que pega as colunas corretas
+        total_pendentes = get_value(aba_volume, 0, 0)  # Primeira coluna
+        valor_total = get_value(aba_volume, 0, 1)      # Segunda coluna
+
+        # Formatar valor monetário - CORREÇÃO: verifica se é numérico antes de formatar
+        try:
+            valor_num = float(valor_total)
+            valor_formatado = f"R$ {valor_num:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        except (ValueError, TypeError):
+            valor_formatado = "-"
+
+        # Processar por tipo de veículo
         if tipo_veiculo == 'caminhoes':
-            # Para caminhões: apenas Volks e OMODA | JAECOO
-            volks = 0
-            omoda_jaecoo = 0
+            # Para caminhões - apenas OMODA/JAECOO e Volks
+            omoda_jaecoo = "-"
+            volks = "-"
 
-            for col in aba_chart.columns:
-                col_name = str(col).strip()
-                if 'volks' in col_name.lower():
-                    volks = aba_chart[col].iloc[0] if not pd.isna(aba_chart[col].iloc[0]) else 0
-                elif 'omoda' in col_name.lower() or 'jaecoo' in col_name.lower():
-                    omoda_jaecoo = aba_chart[col].iloc[0] if not pd.isna(aba_chart[col].iloc[0]) else 0
+            if not aba_chart.empty and len(aba_chart) >= 2:
+                for col in range(len(aba_chart.columns)):
+                    cabecalho = str(get_value(aba_chart, 0, col, "")).upper()
+                    valor = get_value(aba_chart, 1, col)
+
+                    if "OMODA" in cabecalho or "JAECOO" in cabecalho:
+                        omoda_jaecoo = valor
+                    elif "VOLKS" in cabecalho:
+                        volks = valor
 
             informe = f"""
 Total de pedidos pendentes:
-● Volks: {volks}
 ● OMODA | JAECOO: {omoda_jaecoo}
+● Volks: {volks}
 ● Total: {total_pendentes}
 ● Valor: {valor_formatado}
 """
         else:
-            # Para carros: todas as marcas
-            marcas = {
-                'Volks': 0,
-                'GM': 0,
-                'Ford': 0,
-                'Renault': 0,
-                'Citroen': 0,
-                'Peugeot': 0
+            # Para carros - apenas as marcas solicitadas
+            marcas_procuradas = {
+                'VOLKS': 'Volks',
+                'RENAULT': 'Renault',
+                'GM': 'GM',
+                'FORD': 'Ford',
+                'CITROEN': 'Citroen',
+                'PEUGEOT': 'Peugeot'
             }
 
-            for col in aba_chart.columns:
-                col_name = str(col).strip().lower()
-                if 'volks' in col_name:
-                    marcas['Volks'] = aba_chart[col].iloc[0] if not pd.isna(aba_chart[col].iloc[0]) else 0
-                elif 'gm' in col_name or 'chevrolet' in col_name:
-                    marcas['GM'] = aba_chart[col].iloc[0] if not pd.isna(aba_chart[col].iloc[0]) else 0
-                elif 'ford' in col_name:
-                    marcas['Ford'] = aba_chart[col].iloc[0] if not pd.isna(aba_chart[col].iloc[0]) else 0
-                elif 'renault' in col_name:
-                    marcas['Renault'] = aba_chart[col].iloc[0] if not pd.isna(aba_chart[col].iloc[0]) else 0
-                elif 'citroen' in col_name:
-                    marcas['Citroen'] = aba_chart[col].iloc[0] if not pd.isna(aba_chart[col].iloc[0]) else 0
-                elif 'peugeot' in col_name:
-                    marcas['Peugeot'] = aba_chart[col].iloc[0] if not pd.isna(aba_chart[col].iloc[0]) else 0
+            # Inicializa todas as marcas com "-"
+            valores = {v: "-" for v in marcas_procuradas.values()}
+
+            if not aba_chart.empty and len(aba_chart) >= 2:
+                for col in range(len(aba_chart.columns)):
+                    cabecalho = str(get_value(aba_chart, 0, col, "")).upper()
+                    valor = get_value(aba_chart, 1, col)
+
+                    for marca_key, marca_nome in marcas_procuradas.items():
+                        if marca_key in cabecalho:
+                            valores[marca_nome] = valor
+                            break
 
             informe = f"""
 Total de pedidos pendentes:
-● Volks: {marcas['Volks']}
-● Renault: {marcas['Renault']}
-● GM: {marcas['GM']}
-● Citroen: {marcas['Citroen']}
-● Peugeot: {marcas['Peugeot']}
-● Ford: {marcas['Ford']}
+● Volks: {valores['Volks']}
+● Renault: {valores['Renault']}
+● GM: {valores['GM']}
+● Citroen: {valores['Citroen']}
+● Peugeot: {valores['Peugeot']}
+● Ford: {valores['Ford']}
 ● Total: {total_pendentes}
 ● Valor: {valor_formatado}
-
 """
         return informe
 
     except Exception as e:
-        print(f"Erro ao processar o arquivo de pendentes: {str(e)}")
-        print("Verifique:")
-        print("- Se as abas estão com os nomes corretos")
-        print("- Se o formato do arquivo está correto")
-        print(f"- Caminho do arquivo: {file_path}")
-        exit()
+        print(f"Erro ao processar pendentes: {e}")
+        return "\nTotal de pedidos pendentes:\n⚠️ Dados não disponíveis no momento"
 
 
 def sair_entrar(bot):
+    try:
+        # Searching for element 'BtSair '
+        if not bot.find("BtSair", matching=0.97, waiting_time=10000):
+            not_found("BtSair")
+        bot.click()
 
-    # Searching for element 'BtSair '
-    if not bot.find("BtSair", matching=0.97, waiting_time=10000):
-        not_found("BtSair")
-    bot.click()
-    
-    # Searching for element 'EntraCaminhões '
-    if not bot.find("EntraCaminhões", matching=0.97, waiting_time=10000):
-        not_found("EntraCaminhões")
-    bot.click()
-    
+        # Searching for element 'EntraCaminhões '
+        if not bot.find("EntraCaminhões", matching=0.97, waiting_time=10000):
+            not_found("EntraCaminhões")
+        bot.click()
+    except Exception as e:
+        raise Exception(f"Falha ao trocar de portal: {str(e)}")
 
+def enviar_whatsapp(bot, mensagem):
+    # Carrega os contatos da planilha
+    tabela = load_contacts()
+    if tabela is None:
+        print("Não foi possível carregar os contatos. Encerrando execução.")
+        return
 
+    print("Contatos carregados com sucesso:")
+    print(tabela)
 
-def enviar_whatsapp(bot, contato, mensagem):
-
+    # Abre o WhatsApp Web
     bot.browse("https://web.whatsapp.com/")
+    time.sleep(15)  # Tempo para carregar o WhatsApp Web
 
-    # Searching for element 'Lupinha '
-    if not bot.find("Lupinha", matching=0.97, waiting_time=10000):
-        not_found("Lupinha")
-    bot.click()
-    
-    bot.paste(contato)
-    time.sleep(2)
-    bot.enter()
-    time.sleep(2)
-    bot.paste(mensagem)
-    bot.enter()
+    # Para cada contato na planilha
+    for linha in tabela.index:
+        contato = tabela.loc[linha, "contato"]
 
+        try:
+            print(f"Processando contato: {contato}")
+
+            # Searching for element 'Lupinha '
+            if not bot.find("Lupinha", matching=0.97, waiting_time=10000):
+                not_found("Lupinha")
+            bot.click()
+
+
+            # Limpa o campo de pesquisa e digita o contato
+            bot.control_a()
+            bot.backspace()
+            bot.type_keys_with_interval(100,    str(contato))
+            time.sleep(3)  # Espera os resultados aparecerem
+
+            bot.enter()
+            time.sleep(5)  # Tempo para carregar a conversa
+
+            # Envia a mensagem unificada
+            bot.paste(mensagem)
+            time.sleep(1)
+            bot.enter()
+            time.sleep(3)  # Espera a mensagem ser enviada
+
+            print(f"Mensagem enviada para: {contato}")
+
+            # Espera um pouco antes do próximo contato
+            time.sleep(3)
+
+        except Exception as e:
+            print(f"Erro ao enviar para {contato}: {str(e)}")
+            # Tenta continuar para o próximo contato
+            continue
 
 
 def main():
     bot = DesktopBot()
+    erro_global = None
 
     try:
-        # Login no portal
-        login_portal(bot)
-
         # ========== CARROS ==========
-        # Obter relatórios de carros
+        login_portal(bot)
         informe_vendas_carros = obter_planilha(bot, "VN Carros")
         informe_pendentes_carros = obter_planilha_pendentes(bot, "VN Carros Pendentes", 'carros')
-        # titulo_carros = "\n*RELATÓRIO DE CARROS*\n"
-
-        # ========== TROCAR PARA CAMINHÕES ==========
-        sair_entrar(bot)
-        time.sleep(5)  # Esperar a transição
 
         # ========== CAMINHÕES ==========
-        # Obter relatórios de caminhões
+        sair_entrar(bot)
+        time.sleep(5)
         informe_vendas_caminhoes = obter_planilha(bot, "VN Caminhões")
         informe_pendentes_caminhoes = obter_planilha_pendentes(bot, "VN Caminhões pendentes", 'caminhoes')
-        # titulo_caminhoes = "\n*RELATÓRIO DE CAMINHÕES*\n"
 
-        # ========== MENSAGEM ÚNICA ==========
+        # ========== MENSAGEM FINAL ==========
         mensagem_unificada = (
-            "*INFORMATIVO DE VENDAS VEÍCULOS*"
-            #f"{titulo_carros}"
-            f"{informe_vendas_carros}"
-            f"{informe_pendentes_carros}"
-            "*CAMINHÕES*"
-            #f"{titulo_caminhoes}"
-            f"{informe_vendas_caminhoes}"
+            f"{informe_vendas_carros}\n"
+            f"{informe_pendentes_carros}\n"
+            f"*CAMINHÕES*\n"
+            f"{informe_vendas_caminhoes}\n"
             f"{informe_pendentes_caminhoes}"
         )
 
-        # Enviar por WhatsApp em uma única mensagem
-        enviar_whatsapp(bot, "Lucas", mensagem_unificada)
-        time.sleep(5)
+        enviar_whatsapp(bot, mensagem_unificada)
 
     except Exception as e:
-        print(f"Erro durante a execução: {e}")
-        bot.stop_browser()
-        exit()
+        # erro_global = str(e)
+        # print(f"ERRO CRÍTICO: {erro_global}")
+        #
+        # # Tenta notificar o erro mesmo que tenha falhado em outras etapas
+        # try:
+        #     if "Falha ao enviar mensagem no WhatsApp" not in erro_global:
+        #         #enviar_mensagem_erro(bot, erro_global)
+        # except Exception as e2:
+        #     print(f"Falha ao tentar notificar erro: {e2}")
+
+        # Encerra com erro
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
 
 
 
