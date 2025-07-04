@@ -4,7 +4,9 @@ import pandas as pd
 from datetime import datetime
 import os
 import sys
+import shutil
 from botcity.maestro import *
+
 
 # Disable errors if we are not connected to Maestro
 BotMaestroSDK.RAISE_NOT_CONNECTED = False
@@ -57,6 +59,28 @@ def login_portal(bot):
     except Exception as e:
         raise Exception(f"Falha no login: {str(e)}")
 
+def mover_arquivo_para_destino(nome_arquivo):
+    """Move a planilha da pasta de Downloads para a pasta RelatorioBT"""
+    origem = fr'C:\Users\adtsa\Downloads\{nome_arquivo}.xlsx'
+    destino = fr'C:\Users\adtsa\PycharmProjects\RelatorioBT\arquivosEXCEL\{nome_arquivo}.xlsx'
+
+    tempo_limite = time.time() + 30  # espera até 30 segundos
+    while not os.path.exists(origem):
+        if time.time() > tempo_limite:
+            raise FileNotFoundError(f"Arquivo não encontrado em {origem} após 30s")
+        time.sleep(1)
+
+    try:
+        os.rename(origem, destino)
+        print(f"Arquivo movido para: {destino}")
+        return destino
+    except Exception as e:
+        raise Exception(f"Erro ao mover arquivo para pasta destino: {e}")
+
+
+
+
+
 def obter_planilha(bot, nome_arquivo):
     try:
 
@@ -93,7 +117,7 @@ def obter_planilha(bot, nome_arquivo):
         time.sleep(10)
 
         # Processamento do arquivo
-        file_path = fr'C:\Users\adtsa\Downloads\{nome_arquivo}.xlsx'
+        file_path = mover_arquivo_para_destino(nome_arquivo)
 
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Arquivo não encontrado em {file_path}")
@@ -177,7 +201,7 @@ def obter_planilha_pendentes(bot, nome_arquivo, tipo_veiculo='carros'):
 
     time.sleep(10)
 
-    file_path = fr'C:\Users\adtsa\Downloads\{nome_arquivo}.xlsx'
+    file_path = mover_arquivo_para_destino(nome_arquivo)
 
     if not os.path.exists(file_path):
         print(f"ERRO: Arquivo não encontrado em {file_path}")
@@ -345,10 +369,14 @@ def enviar_whatsapp(bot, mensagem):
             # Tenta continuar para o próximo contato
             continue
 
+    bot.alt_f4()
 
 def main():
     bot = DesktopBot()
     erro_global = None
+
+    PASTA_DESTINO = r"C:\Users\adtsa\PycharmProjects\RelatorioBT\arquivosEXCEL"
+    os.makedirs(PASTA_DESTINO, exist_ok=True)
 
     try:
         # ========== CARROS ==========
@@ -372,6 +400,14 @@ def main():
         )
 
         enviar_whatsapp(bot, mensagem_unificada)
+
+        # Apaga a pasta com os arquivos após envio das mensagens
+        try:
+            shutil.rmtree(PASTA_DESTINO)
+            print(f"Pasta {PASTA_DESTINO} excluída com sucesso.")
+        except Exception as e:
+            print(f"Erro ao excluir pasta {PASTA_DESTINO}: {e}")
+
 
     except Exception as e:
         # erro_global = str(e)
