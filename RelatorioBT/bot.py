@@ -6,10 +6,18 @@ import os
 import sys
 import shutil
 from botcity.maestro import *
+from dotenv import load_dotenv
 
 
 # Disable errors if we are not connected to Maestro
 BotMaestroSDK.RAISE_NOT_CONNECTED = False
+
+# Carregar variáveis do .env
+load_dotenv()
+
+# Exemplo de como acessar as variáveis:
+# usuario = os.getenv('USUARIO')
+# senha = os.getenv('SENHA')
 
 def not_found(label):
     print(f"Elemento não encontrado: {label}")
@@ -43,11 +51,13 @@ def load_contacts():
 
 def login_portal(bot):
     try:
+        usuario = os.getenv('USUARIO')
+        senha = os.getenv('SENHA')
         bot.browse("https://portalanalysisbi.com/login")
         time.sleep(3)
-        bot.paste("lucas.alves@adtsa.com.br")
+        bot.paste(usuario)
         bot.tab()
-        bot.paste("Adtsa2025@@")
+        bot.paste(senha)
         bot.enter()
         time.sleep(5)
 
@@ -169,10 +179,12 @@ Vendas Mensal - {data_mensal}:
 
 def obter_planilha_pendentes(bot, nome_arquivo, tipo_veiculo='carros'):
 
-    # Searching for element 'PendenteMoves '
-    if not bot.find("PendenteMoves", matching=0.97, waiting_time=10000):
-        not_found("PendenteMoves")
+
+    # Searching for element 'PendentesNovos '
+    if not bot.find("Pendentes Novos", matching=0.97, waiting_time=10000):
+        not_found("Pendentes Novos")
     bot.click()
+    
 
     # Searching for element 'BtExportar '
     if not bot.find("BtExportar", matching=0.97, waiting_time=10000):
@@ -426,11 +438,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
-
-
-
